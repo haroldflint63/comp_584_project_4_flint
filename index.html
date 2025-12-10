@@ -532,6 +532,10 @@
     const statusMessage = document.getElementById('statusMessage');
     const resourceTabs = document.querySelectorAll('.nav-link');
 
+    // Allowed resources for validation
+    const ALLOWED_RESOURCES = ['people', 'planets', 'starships', 'vehicles', 'films', 'species'];
+    const MAX_FIELDS_PER_CARD = 4;
+
     // Icon mapping for resources
     const resourceIcons = {
       people: '👤',
@@ -585,6 +589,12 @@
       
       if (!query) {
         showStatus('Please enter a search term', 'error');
+        return;
+      }
+
+      // Validate resource to prevent URL injection
+      if (!ALLOWED_RESOURCES.includes(currentResource)) {
+        showStatus('Invalid resource type', 'error');
         return;
       }
 
@@ -663,6 +673,14 @@
       return card;
     }
 
+    // Helper function to format value with unit
+    function formatValueWithUnit(value, unit) {
+      if (!value || value === 'unknown' || value === 'n/a') {
+        return value || 'unknown';
+      }
+      return value + ' ' + unit;
+    }
+
     // Get detail fields based on resource type
     function getDetailFields(item) {
       const fields = [];
@@ -671,8 +689,8 @@
         case 'people':
           if (item.gender) fields.push({ label: 'Gender', value: item.gender });
           if (item.birth_year) fields.push({ label: 'Birth Year', value: item.birth_year });
-          if (item.height) fields.push({ label: 'Height', value: item.height + ' cm' });
-          if (item.mass) fields.push({ label: 'Mass', value: item.mass + ' kg' });
+          if (item.height) fields.push({ label: 'Height', value: formatValueWithUnit(item.height, 'cm') });
+          if (item.mass) fields.push({ label: 'Mass', value: formatValueWithUnit(item.mass, 'kg') });
           break;
         case 'planets':
           if (item.climate) fields.push({ label: 'Climate', value: item.climate });
@@ -683,7 +701,7 @@
         case 'vehicles':
           if (item.model) fields.push({ label: 'Model', value: item.model });
           if (item.manufacturer) fields.push({ label: 'Manufacturer', value: item.manufacturer });
-          if (item.cost_in_credits) fields.push({ label: 'Cost', value: item.cost_in_credits + ' credits' });
+          if (item.cost_in_credits) fields.push({ label: 'Cost', value: formatValueWithUnit(item.cost_in_credits, 'credits') });
           break;
         case 'films':
           if (item.director) fields.push({ label: 'Director', value: item.director });
@@ -693,11 +711,11 @@
         case 'species':
           if (item.classification) fields.push({ label: 'Classification', value: item.classification });
           if (item.language) fields.push({ label: 'Language', value: item.language });
-          if (item.average_lifespan) fields.push({ label: 'Lifespan', value: item.average_lifespan + ' years' });
+          if (item.average_lifespan) fields.push({ label: 'Lifespan', value: formatValueWithUnit(item.average_lifespan, 'years') });
           break;
       }
       
-      return fields.slice(0, 4); // Limit to 4 fields per card
+      return fields.slice(0, MAX_FIELDS_PER_CARD);
     }
 
     // Show empty state
