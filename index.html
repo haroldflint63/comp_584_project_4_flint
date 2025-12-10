@@ -551,6 +551,11 @@
       border-color: var(--primary-gold);
     }
 
+    #pageNumbers {
+      display: flex;
+      gap: 0.5rem;
+    }
+
     /* Custom Scrollbar */
     ::-webkit-scrollbar {
       width: 12px;
@@ -577,8 +582,9 @@
     .search-btn:focus,
     .nav-tab:focus,
     .pagination-btn:focus {
-      outline: 3px solid var(--primary-cyan);
+      outline: 3px solid var(--primary-gold);
       outline-offset: 2px;
+      box-shadow: 0 0 0 5px rgba(255, 215, 0, 0.2);
     }
 
     /* Responsive Design */
@@ -753,7 +759,7 @@
         <span>Films</span>
       </div>
       <div class="nav-tab" data-resource="species" role="tab" tabindex="0">
-        <i class="fas fa-alien-monster"></i>
+        <i class="fas fa-dna"></i>
         <span>Species</span>
       </div>
     </div>
@@ -775,7 +781,7 @@
       <button class="pagination-btn" id="prevBtn" aria-label="Previous page">
         <i class="fas fa-chevron-left"></i> Previous
       </button>
-      <div id="pageNumbers" class="d-flex gap-2"></div>
+      <div id="pageNumbers"></div>
       <span class="pagination-info" id="pageInfo"></span>
       <button class="pagination-btn" id="nextBtn" aria-label="Next page">
         Next <i class="fas fa-chevron-right"></i>
@@ -834,7 +840,7 @@
     // Number Formatting
     function formatNumber(num) {
       if (!num || num === 'unknown' || num === 'n/a') return 'Unknown';
-      return parseInt(num).toLocaleString();
+      return parseInt(num, 10).toLocaleString();
     }
 
     // Show Loading Overlay
@@ -1032,7 +1038,7 @@
     async function fetchAllPages(resource, searchQuery = '') {
       // Validate resource
       if (!ALLOWED_RESOURCES.includes(resource)) {
-        throw new Error('Invalid resource type');
+        throw new Error(`Invalid resource type. Please select one of: ${ALLOWED_RESOURCES.join(', ')}`);
       }
 
       let allData = [];
@@ -1084,7 +1090,8 @@
               break;
             }
           } catch (error) {
-            console.warn(`Error searching ${resource}:`, error);
+            // Log error without exposing user input details
+            console.warn('Error searching resource:', error.message);
           }
         }
 
@@ -1104,7 +1111,7 @@
     async function loadResourceData(resource) {
       // Validate resource
       if (!ALLOWED_RESOURCES.includes(resource)) {
-        showError('Invalid resource type');
+        showError(`Invalid resource type. Please select one of: ${ALLOWED_RESOURCES.join(', ')}`);
         return;
       }
 
