@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Star Wars Search</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popmotion/11.0.5/popmotion.global.min.js"></script>
+  <style>
+    :root {
+      --bg: #071021;
+      --card: #0f1724;
+      --panel-bg: rgba(15, 23, 36, 0.85);
+      --muted: #97a6b2;
+      --accent: #FFE81F;
+      --accent-glow: rgba(255, 232, 31, 0.3);
+      --border: rgba(255, 255, 255, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: linear-gradient(180deg, var(--bg), #051021);
+      color: #e6eef6;
+      font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+      padding: 28px;
+      overflow-x: hidden;
+      position: relative;
+      min-height: 100vh;
+    }
+
+    /* Hyperspace starfield canvas */
+    #stars {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Layout */
+    .app {
+      max-width: 1360px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        display: none;
+      }
+    }
+
+    /* Sidebar */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 20px;
+      height: calc(100vh - 56px);
+      position: sticky;
+      top: 28px;
+      background: linear-gradient(155deg, rgba(20, 30, 48, 0.95), rgba(15, 23, 36, 0.9));
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    }
+
+    .sidebar h4 {
+      margin: 0 0 8px 0;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    .cat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .cat-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .cat-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    .cat-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid transparent;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cat-item::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, var(--accent-glow), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .cat-item:hover {
+      color: #fff;
+      transform: translateX(6px);
+      background: rgba(255, 232, 31, 0.08);
+      border-color: var(--accent-glow);
+      box-shadow: 0 4px 16px rgba(255, 232, 31, 0.15);
+    }
+
+    .cat-item:hover::before {
+      opacity: 1;
+    }
+
+    .cat-thumb {
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 20px;
+      font-weight: 700;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      position: relative;
+      z-index: 1;
+      flex-shrink: 0;
+    }
+
+    .cat-label {
+      font-size: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 12px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 11px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      line-height: 1.4;
+    }
+
+    /* Main Panel */
+    .panel {
+      background: linear-gradient(155deg, rgba(20, 30, 48, 0.85), rgba(15, 23, 36, 0.8));
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+      opacity: 0.15;
+      pointer-events: none;
+    }
+
+    .panel > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .panel h2 {
+      font-size: 38px;
+      font-weight: 900;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+    }
+
+    .panel p.small {
+      color: #a8b4d5;
+      font-size: 15px;
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+
+    .panel code {
+      background: rgba(255, 232, 31, 0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+      color: var(--accent);
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+    }
+
+    /* Search Row */
+    .search-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .form-control {
+      flex: 1;
+      background: rgba(10, 14, 30, 0.95);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 20px;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 500;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .form-control::placeholder {
+      color: #6b7a9e;
+    }
+
+    .form-control:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow), 0 8px 24px var(--accent-glow);
+      transform: translateY(-2px);
+    }
+
+    .btn {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, #ffed4e 100%);
+      color: #1a1f3a;
+      box-shadow: 0 6px 20px var(--accent-glow);
+    }
+
+    .btn-primary::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.5s ease;
+    }
+
+    .btn-primary:hover::before {
+      transform: translateX(100%);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(255, 232, 31, 0.5);
+    }
+
+    .btn-primary:active {
+      transform: translateY(-1px);
+    }
+
+    .btn-outline-light {
+      background: rgba(255, 255, 255, 0.08);
+      color: #b8c5e0;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-outline-light:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: scale(1.05);
+    }
+
+    /* Results */
+    #results {
+      min-height: 400px;
+    }
+
+    .result-card {
+      background: linear-gradient(135deg, rgba(10, 20, 40, 0.8), rgba(6, 14, 35, 0.9));
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 14px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    /* Lightsaber hover effect */
+    .lightsaber-hover::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 100%;
+      background: linear-gradient(90deg, rgba(0, 191, 255, 0.2), transparent);
+      z-index: 0;
+      transition: width 0.4s ease;
+      border-radius: 14px;
+      pointer-events: none;
+    }
+
+    .lightsaber-hover:hover::before {
+      width: 100%;
+    }
+
+    .lightsaber-hover * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .result-card:hover {
+      border-color: rgba(0, 191, 255, 0.5);
+      box-shadow: 0 12px 32px rgba(0, 191, 255, 0.2);
+      transform: translateY(-4px);
+    }
+
+    .thumb {
+      width: 90px;
+      height: 90px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(5, 32, 51, 0.8), rgba(3, 24, 39, 0.9));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 12px;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .img-cover {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .details {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .details > div:first-child {
+      font-weight: 700;
+      font-size: 18px;
+      color: #fff;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* Global Loading Overlay */
+    .global-loader-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .loader-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    /* BB-8 Loader */
+    .bb8-loader {
+      width: 100px;
+      height: 100px;
+      position: relative;
+      animation: bb8Roll 2s linear infinite;
+    }
+
+    @keyframes bb8Roll {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .bb8-body {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #fff, #e8e8e8);
+      border: 3px solid #ff8800;
+      position: relative;
+      box-shadow: 0 0 30px rgba(255, 136, 0, 0.5);
+    }
+
+    .bb8-head {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #fff, #e8e8e8);
+      border: 2px solid #ff8800;
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .bb8-eye {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #1a1a1a;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+    }
+
+    .loading-text {
+      font-family: Arial, sans-serif;
+      font-size: 18px;
+      color: var(--accent);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      text-align: center;
+      gap: 20px;
+      padding: 40px;
+    }
+
+    .empty-icon {
+      font-size: 80px;
+      opacity: 0.4;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-15px); }
+    }
+
+    .empty-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #d0d8f0;
+    }
+
+    .empty-text {
+      font-size: 14px;
+      color: var(--muted);
+      max-width: 500px;
+      line-height: 1.6;
+    }
+
+    /* Detail view styling */
+    .detail-view {
+      background: rgba(10, 20, 40, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+    }
+
+    .detail-view h4 {
+      margin: 0 0 12px 0;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .detail-image {
+      width: 100%;
+      border-radius: 12px;
+      border: 2px solid var(--border);
+    }
+
+    .detail-info {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .detail-info > div {
+      display: flex;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .detail-info strong {
+      color: var(--accent);
+      min-width: 140px;
+      text-transform: capitalize;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="stars"></canvas>
+
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar" aria-label="Categories">
+      <h4>Categories</h4>
+      <div class="cat-list" id="categoryList"></div>
+      <div class="sidebar-footer">Click a category to browse all items</div>
+    </aside>
+
+    <!-- Main Panel -->
+    <main class="panel" role="main">
+      <h2>Star Wars Search</h2>
+      <p class="small">
+        Type a name (e.g., "Luke Skywalker", "Tatooine", "Falcon"). The app will auto-search across common resources (people, planets, starships, vehicles, species, films) and return matches. You may also prefix the query with a resource, e.g. <code>people: luke</code>.
+      </p>
+
+      <div class="search-row">
+        <input id="searchInput" class="form-control" placeholder="Search by name — try: Luke Skywalker" />
+        <button id="searchBtn" class="btn btn-primary">Search</button>
+        <button id="clearBtn" class="btn btn-outline-light">Clear</button>
+      </div>
+
+      <div id="results">
+        <div class="empty-state">
+          <div class="empty-icon">🔭</div>
+          <div class="empty-title">Start a search to see results</div>
+          <div class="empty-text">
+            Search across the entire Star Wars universe using the SWAPI database
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const { styler, spring, animate } = window.popmotion || {};
+    const resources = ['people', 'planets', 'starships', 'vehicles', 'species', 'films'];
+    const resultsBox = document.getElementById('results');
+    const searchBtn = document.getElementById('searchBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const searchInput = document.getElementById('searchInput');
+    const categoryList = document.getElementById('categoryList');
+
+    // BB-8 Loading Animation
+    function setLoading(is) {
+      const existingOverlay = document.querySelector('.global-loader-overlay');
+      if (existingOverlay) existingOverlay.remove();
+      if (!is) return;
+
+      const overlay = document.createElement('div');
+      overlay.className = 'global-loader-overlay';
+      
+      const loaderContainer = document.createElement('div');
+      loaderContainer.className = 'loader-container';
+      
+      const bb8 = document.createElement('div');
+      bb8.className = 'bb8-loader';
+      bb8.innerHTML = `
+        <div class="bb8-body">
+          <div class="bb8-head">
+            <div class="bb8-eye"></div>
+          </div>
+        </div>
+      `;
+      
+      const loadingText = document.createElement('div');
+      loadingText.className = 'loading-text';
+      loadingText.textContent = 'Loading...';
+      
+      loaderContainer.appendChild(bb8);
+      loaderContainer.appendChild(loadingText);
+      overlay.appendChild(loaderContainer);
+      document.body.appendChild(overlay);
+    }
+
+    function makeCard(item, resource) {
+      const uid = item.uid || (item.url && item.url.split('/').filter(Boolean).pop());
+      const name = item.name || (item.properties && (item.properties.name || item.properties.title)) || uid;
+      
+      const div = document.createElement('div');
+      div.className = 'result-card lightsaber-hover';
+      div.dataset.resource = resource;
+      div.dataset.uid = uid;
+
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+      
+      const iconMap = {
+        people: '👤',
+        planets: '🪐',
+        starships: '🚀',
+        vehicles: '🛸',
+        species: '👽',
+        films: '🎬'
+      };
+      
+      thumb.textContent = iconMap[resource] || resource[0].toUpperCase();
+
+      const det = document.createElement('div');
+      det.className = 'details';
+      det.innerHTML = `
+        <div>${name}</div>
+        <div class="meta">${resource} • uid: ${uid || '—'}</div>
+      `;
+      
+      div.appendChild(thumb);
+      div.appendChild(det);
+
+      // Popmotion spring animation
+      if (animate) {
+        animate({
+          from: { opacity: 0, y: 20 },
+          to: { opacity: 1, y: 0 },
+          duration: 500,
+          ease: [0.34, 1.56, 0.64, 1],
+          onUpdate: ({ opacity, y }) => {
+            div.style.opacity = opacity;
+            div.style.transform = `translateY(${y}px)`;
+          }
+        });
+      }
+
+      div.addEventListener('click', () => showDetails(resource, uid));
+      return div;
+    }
+
+    // Search function
+    async function smartSearch(query) {
+      query = query.trim();
+      if (!query) return;
+      
+      const prefixMatch = query.match(/^([a-zA-Z]+)\s*:\s*(.+)$/);
+      let resourceList = resources;
+      let name = query;
+      
+      if (prefixMatch && resources.includes(prefixMatch[1].toLowerCase())) {
+        resourceList = [prefixMatch[1].toLowerCase()];
+        name = prefixMatch[2];
+      }
+
+      setLoading(true);
+      try {
+        for (const r of resourceList) {
+          try {
+            const url = `https://www.swapi.tech/api/${r}/?name=${encodeURIComponent(name)}`;
+            const res = await fetch(url);
+            const json = await res.json();
+            
+            if (json?.result?.length) {
+              resultsBox.innerHTML = '';
+              json.result.forEach(item => 
+                resultsBox.appendChild(makeCard({
+                  uid: item.uid,
+                  name: item.name,
+                  properties: item.properties
+                }, r))
+              );
+              return;
+            }
+          } catch (e) {
+            console.warn('search error', e);
+          }
+        }
+        resultsBox.innerHTML = '<div class="empty-state"><div class="empty-icon">😔</div><div class="empty-title">No matches found</div><div class="empty-text">Try a different search term or category</div></div>';
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // Details view
+    async function showDetails(resource, uid) {
+      setLoading(true);
+      if (!uid) {
+        resultsBox.innerHTML = '<div class="empty-state"><div class="empty-text">No UID available for this item.</div></div>';
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        const res = await fetch(`https://www.swapi.tech/api/${resource}/${uid}`);
+        const json = await res.json();
+        
+        if (!json?.result?.properties) {
+          resultsBox.innerHTML = '<div class="empty-state"><div class="empty-text">Details not found.</div></div>';
+          return;
+        }
+        
+        const p = json.result.properties;
+
+        async function fetchNames(urls) {
+          if (!urls || urls.length === 0) return [];
+          return await Promise.all(urls.map(async u => {
+            try {
+              const r = await fetch(u);
+              const j = await r.json();
+              return j.result?.properties?.name || j.result?.properties?.title || '—';
+            } catch (e) {
+              return '—';
+            }
+          }));
+        }
+
+        const container = document.createElement('div');
+        container.className = 'detail-view';
+        
+        const relatedFields = ['starships', 'vehicles', 'planets', 'characters', 'people', 'species', 'pilots', 'films'];
+        const relatedHtml = await Promise.all(
+          relatedFields.map(async field => {
+            if (p[field]?.length) {
+              const names = await fetchNames(p[field]);
+              return `<div><strong>${field.replace(/_/g, ' ')}:</strong> <span>${names.join(', ')}</span></div>`;
+            }
+            return '';
+          })
+        );
+
+        let homeworldHtml = '';
+        if (p.homeworld) {
+          const name = await fetchNames([p.homeworld]);
+          homeworldHtml = `<div><strong>homeworld:</strong> <span>${name[0]}</span></div>`;
+        }
+
+        container.innerHTML = `
+          <div class="detail-grid">
+            <div></div>
+            <div>
+              <h4>${p.name || p.title || '—'}</h4>
+              <div class="meta" style="margin-bottom: 16px">Resource: ${resource} • uid: ${uid}</div>
+              <div class="detail-info">
+                ${Object.entries(p)
+                  .filter(([k]) => !['created', 'edited', 'url', 'homeworld'].includes(k) && !relatedFields.includes(k))
+                  .map(([k, v]) => `<div><strong>${k.replace(/_/g, ' ')}:</strong> <span>${v}</span></div>`)
+                  .join('')}
+                ${homeworldHtml}
+                ${relatedHtml.join('')}
+              </div>
+            </div>
+          </div>
+        `;
+        
+        resultsBox.innerHTML = '';
+        resultsBox.appendChild(container);
+      } catch (err) {
+        console.error(err);
+        resultsBox.innerHTML = '<div class="empty-state"><div class="empty-text">Error loading details.</div></div>';
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // Fetch all pages from swapi.dev
+    async function fetchAllFromSwapiDev(resource) {
+      const accumulated = [];
+      let url = `https://swapi.dev/api/${resource}/`;
+      
+      try {
+        while (url) {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('network error');
+          const json = await res.json();
+          if (json.results && json.results.length) accumulated.push(...json.results);
+          url = json.next;
+        }
+      } catch (e) {
+        console.error('fetchAllFromSwapiDev error for', resource, e);
+        throw e;
+      }
+      return accumulated;
+    }
+
+    async function fetchCategory(resource) {
+      setLoading(true);
+      try {
+        const items = await fetchAllFromSwapiDev(resource);
+        resultsBox.innerHTML = '';
+        
+        if (items && items.length) {
+          items.forEach(item => {
+            const uid = (item.url || '').split('/').filter(Boolean).pop();
+            resultsBox.appendChild(makeCard({
+              uid,
+              name: item.name || item.title,
+              properties: item
+            }, resource));
+          });
+        } else {
+          resultsBox.innerHTML = '<div class="empty-state"><div class="empty-text">No items found in this category.</div></div>';
+        }
+      } catch (e) {
+        resultsBox.innerHTML = '<div class="empty-state"><div class="empty-text">Error fetching category.</div></div>';
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // Render sidebar categories
+    function renderSidebar() {
+      categoryList.innerHTML = '';
+      const iconMap = {
+        people: '👤',
+        planets: '🪐',
+        starships: '🚀',
+        vehicles: '🛸',
+        species: '👽',
+        films: '🎬'
+      };
+
+      resources.forEach(r => {
+        const el = document.createElement('div');
+        el.className = 'cat-item';
+        el.dataset.resource = r;
+
+        const thumb = document.createElement('div');
+        thumb.className = 'cat-thumb';
+        thumb.textContent = iconMap[r] || r[0].toUpperCase();
+
+        const label = document.createElement('div');
+        label.className = 'cat-label';
+        label.textContent = r.charAt(0).toUpperCase() + r.slice(1);
+
+        el.appendChild(thumb);
+        el.appendChild(label);
+
+        // Popmotion hover effect
+        if (styler && spring) {
+          const s = styler(el);
+          el.addEventListener('mouseenter', () => 
+            spring({ from: { y: 0 }, to: { y: -4 }, stiffness: 220, damping: 14 }).start(v => s.set(v))
+          );
+          el.addEventListener('mouseleave', () => 
+            spring({ from: { y: -4 }, to: { y: 0 }, stiffness: 220, damping: 14 }).start(v => s.set(v))
+          );
+        }
+
+        el.addEventListener('click', () => fetchCategory(r));
+        categoryList.appendChild(el);
+      });
+    }
+
+    // Event listeners
+    searchBtn.addEventListener('click', () => {
+      if (searchInput.value.trim()) smartSearch(searchInput.value);
+    });
+    
+    clearBtn.addEventListener('click', () => {
+      resultsBox.innerHTML = '<div class="empty-state"><div class="empty-icon">🔭</div><div class="empty-title">Start a search to see results</div><div class="empty-text">Search across the entire Star Wars universe using the SWAPI database</div></div>';
+      searchInput.value = '';
+    });
+    
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && searchInput.value) smartSearch(searchInput.value);
+    });
+
+    // Initialize
+    renderSidebar();
+
+    // Hyperspace starfield animation
+    const canvas = document.getElementById('stars');
+    const ctx = canvas.getContext('2d');
+    const STAR_COUNT = 200;
+    let stars = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    for (let i = 0; i < STAR_COUNT; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        z: Math.random() * 2 + 0.5,
+        vx: (Math.random() - 0.5) * 0.2,
+        vy: (Math.random() - 0.5) * 0.2
+      });
+    }
+
+    function animateStars() {
+      ctx.fillStyle = '#071021';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+
+      for (let s of stars) {
+        s.z -= 0.05;
+        if (s.z <= 0) {
+          s.z = Math.random() * 2 + 0.5;
+          s.x = (Math.random() - 0.5) * canvas.width;
+          s.y = (Math.random() - 0.5) * canvas.height;
+        }
+
+        const px = cx + s.x / s.z;
+        const py = cy + s.y / s.z;
+        const radius = (2 / s.z);
+
+        ctx.beginPath();
+        ctx.arc(px, py, radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+      }
+      requestAnimationFrame(animateStars);
+    }
+    
+    animateStars();
+  </script>
+</body>
+</html>
