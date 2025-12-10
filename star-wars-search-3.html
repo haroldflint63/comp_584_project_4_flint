@@ -592,7 +592,7 @@
     <main class="panel" role="main">
       <h2>Star Wars Search</h2>
       <p class="small">
-        Type a name (e.g., "Luke Skywalker", "Tatooine", "Falcon"). The app will auto-search across common resources (people, planets, starships, vehicles, species, films) and return matches. You may also prefix the query with a resource, e.g. <code>people: luke</code>.
+        Type a name (e.g., "Luke Skywalker", "Tatooine", "Falcon"). The app will auto-search across common resources (people, planets, starships, vehicles, species, films) and return matches. You may [...]
       </p>
 
       <div class="search-row">
@@ -742,7 +742,7 @@
             console.warn('search error', e);
           }
         }
-        resultsBox.innerHTML = '<div class="empty-state"><div class="empty-icon">😔</div><div class="empty-title">No matches found</div><div class="empty-text">Try a different search term or category</div></div>';
+        resultsBox.innerHTML = '<div class="empty-state"><div class="empty-icon">😔</div><div class="empty-title">No matches found</div><div class="empty-text">Try a different search term or categor[...]
       } finally {
         setLoading(false);
       }
@@ -925,7 +925,7 @@
     });
     
     clearBtn.addEventListener('click', () => {
-      resultsBox.innerHTML = '<div class="empty-state"><div class="empty-icon">🔭</div><div class="empty-title">Start a search to see results</div><div class="empty-text">Search across the entire Star Wars universe using the SWAPI database</div></div>';
+      resultsBox.innerHTML = '<div class="empty-state"><div class="empty-icon">🔭</div><div class="empty-title">Start a search to see results</div><div class="empty-text">Search across the entire St[...]
       searchInput.value = '';
     });
     
